@@ -106,4 +106,13 @@ import java.util.UUID;
         public PublicKey getPublicKey() {
             return this.publicKey;
         }
+
+
+        public boolean isTokenValid(String token) {
+            try {
+                return !isTokenExpired(token);
+            } catch (Exception e) {
+                return false;
+            }
+        }
     }

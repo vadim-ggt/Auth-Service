@@ -36,7 +36,7 @@ public class GlobalExceptionHandler {
 
         return buildErrorResponse(
                 ex,
-                "A resource with these details already exists or violates data constraints.", // Безопасное сообщение
+                "A resource with these details already exists or violates data constraints.",
                 HttpStatus.CONFLICT,
                 request
         );
