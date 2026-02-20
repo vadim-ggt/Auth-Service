@@ -18,6 +18,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
@@ -26,6 +27,18 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+
+    @ExceptionHandler(TokenRefreshException.class)
+    public ResponseEntity<ErrorResponseDto> handleTokenRefreshException(
+            TokenRefreshException ex, WebRequest request) {
+
+        return buildErrorResponse(
+                ex,
+                ex.getMessage(),
+                HttpStatus.FORBIDDEN,
+                request
+        );
+    }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponseDto> handleDataIntegrityViolation(
@@ -94,6 +107,18 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponseDto> handleNoResourceFoundException(
+            NoResourceFoundException ex, WebRequest request) {
+
+        return buildErrorResponse(
+                ex,
+                "Endpoint not found: " + ex.getResourcePath(),
+                HttpStatus.NOT_FOUND,
+                request
+        );
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponseDto> handleAccessDeniedException(
             AccessDeniedException ex, WebRequest request) {
@@ -123,6 +148,21 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(
                 ex, ex.getMessage(),
                 HttpStatus.NOT_FOUND, request
+        );
+    }
+
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ErrorResponseDto> handleBusinessException(
+            BusinessException ex, WebRequest request) {
+
+        logger.warn("Business error: {}", ex.getMessage());
+
+        return buildErrorResponse(
+                ex,
+                ex.getMessage(),
+                ex.getStatus(),
+                request
         );
     }
 

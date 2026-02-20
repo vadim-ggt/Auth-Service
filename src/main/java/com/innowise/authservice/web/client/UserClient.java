@@ -1,7 +1,7 @@
 package com.innowise.authservice.web.client;
 
 import com.innowise.authservice.domain.config.FeignClientConfig;
-import com.innowise.authservice.web.dto.auth.RegisterRequest;
+import com.innowise.authservice.web.dto.CreateUserProfileDto;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,5 +15,5 @@ import org.springframework.web.bind.annotation.RequestBody;
 public interface UserClient {
 
     @PostMapping
-    void createUserProfile(@RequestBody RegisterRequest request);
+    void createUserProfile(@RequestBody CreateUserProfileDto createUserProfileDto);
 }

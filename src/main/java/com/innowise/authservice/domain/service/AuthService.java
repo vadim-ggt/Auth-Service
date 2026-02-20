@@ -5,7 +5,10 @@ import com.innowise.authservice.domain.dao.RefreshTokenRepository;
 import com.innowise.authservice.domain.entity.Credential;
 import com.innowise.authservice.domain.entity.RefreshToken;
 import com.innowise.authservice.domain.entity.Role;
+import com.innowise.authservice.domain.exception.EmailAlreadyTakenException;
+import com.innowise.authservice.domain.exception.TokenRefreshException;
 import com.innowise.authservice.web.client.UserClient;
+import com.innowise.authservice.web.dto.CreateUserProfileDto;
 import com.innowise.authservice.web.dto.RefreshTokenRequest;
 import com.innowise.authservice.web.dto.auth.AuthenticationRequest;
 import com.innowise.authservice.web.dto.auth.AuthenticationResponse;
@@ -40,7 +43,7 @@ public class AuthService {
     @Transactional
     public AuthenticationResponse register(RegisterRequest request) {
         if (credentialRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already taken");
+            throw new EmailAlreadyTakenException(request.getEmail());
         }
 
         UUID newUserId = UUID.randomUUID();
@@ -55,9 +58,17 @@ public class AuthService {
 
         Credential savedUser = credentialRepository.save(credential);
 
+        CreateUserProfileDto createUserProfileDto = CreateUserProfileDto.builder()
+                        .userId(newUserId)
+                        .email(request.getEmail())
+                        .name(request.getName())
+                        .surname(request.getSurname())
+                        .birthDate(request.getBirthDate())
+                        .build();
+
         request.setUserId(newUserId);
         try {
-            userClient.createUserProfile(request);
+            userClient.createUserProfile(createUserProfileDto);
         } catch (Exception e) {
             throw new RuntimeException("Failed to create user profile. Service unavailable.", e);
         }
@@ -85,14 +96,14 @@ public class AuthService {
         String tokenStr = request.getRefreshToken();
 
         if (!jwtService.isTokenValid(tokenStr)) {
-            throw new RuntimeException("Refresh token is invalid");
+            throw new TokenRefreshException("Refresh token is invalid");
         }
 
         RefreshToken storedToken = refreshTokenRepository.findByToken(tokenStr)
-                .orElseThrow(() -> new RuntimeException("Token not found in database"));
+                .orElseThrow(() -> new TokenRefreshException("Token not found in database"));
 
         if (storedToken.isRevoked() || storedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Refresh token is revoked or expired");
+            throw new TokenRefreshException("Refresh token is revoked or expired");
         }
 
         storedToken.setRevoked(true);

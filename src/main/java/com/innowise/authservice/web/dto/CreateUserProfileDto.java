@@ -1,4 +1,4 @@
-package com.innowise.authservice.web.dto.auth;
+package com.innowise.authservice.web.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,11 +12,10 @@ import java.util.UUID;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class RegisterRequest {
+public class CreateUserProfileDto {
     private UUID userId;
-    private String email;
-    private String password;
     private String name;
     private String surname;
+    private String email;
     private LocalDate birthDate;
 }
