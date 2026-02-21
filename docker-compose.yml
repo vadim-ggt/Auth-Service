@@ -12,6 +12,8 @@ services:
       - "5433:5432"
     volumes:
       - auth_pgdata:/var/lib/postgresql/data
+    networks:
+      - shared-net
 
   auth-service:
     build: .
@@ -25,6 +27,13 @@ services:
       - DOCKER_DB_HOST=postgres-auth
     depends_on:
       - postgres-auth
+    networks:
+      - shared-net
+
+networks:
+  shared-net:
+    name: my_shared_network
+    external: true
 
 volumes:
   auth_pgdata:
