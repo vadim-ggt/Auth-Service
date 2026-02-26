@@ -7,6 +7,7 @@ import com.innowise.authservice.domain.entity.RefreshToken;
 import com.innowise.authservice.domain.entity.Role;
 import com.innowise.authservice.domain.exception.EmailAlreadyTakenException;
 import com.innowise.authservice.domain.exception.TokenRefreshException;
+import com.innowise.authservice.domain.exception.UserServiceCrashedException;
 import com.innowise.authservice.web.client.UserClient;
 import com.innowise.authservice.web.dto.CreateUserProfileDto;
 import com.innowise.authservice.web.dto.RefreshTokenRequest;
@@ -70,7 +71,7 @@ public class AuthService {
         try {
             userClient.createUserProfile(createUserProfileDto);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to create user profile. Service unavailable.", e);
+            throw new UserServiceCrashedException("Failed to create user profile. Service unavailable.", e);
         }
 
         return generateAuthResponse(savedUser);
