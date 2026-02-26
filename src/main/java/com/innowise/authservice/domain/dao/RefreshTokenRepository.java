@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+// TODO: For high-load scenarios, migrate Refresh Token storage from RDBMS to an In-Memory store (e.g., Redis)
+// to reduce disk I/O and offload the primary database.
+
 @Repository
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
 
