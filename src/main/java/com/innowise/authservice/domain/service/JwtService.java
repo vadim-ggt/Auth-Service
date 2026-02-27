@@ -3,53 +3,72 @@ package com.innowise.authservice.domain.service;
 import com.innowise.authservice.domain.entity.Credential;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+
+import java.security.*;
+import java.security.interfaces.RSAPrivateCrtKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.RSAPublicKeySpec;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
-    @Service
-    public class JwtService {
+@Service
+public class JwtService {
 
-        public static final String KEY_ID = "auth-server-key";
+    public static final String KEY_ID = "auth-server-key";
 
-        private final PrivateKey privateKey;
-        private final PublicKey publicKey;
+    @Value("${jwt.private-key}")
+    private String privateKeyString;
+    private PrivateKey privateKey;
+    private PublicKey publicKey;
 
-        @Value("${application.security.jwt.expiration-minutes:15}")
-        private long accessTokenExpirationMinutes;
+    @Value("${application.security.jwt.expiration-minutes:15}")
+    private long accessTokenExpirationMinutes;
 
-        @Value("${application.security.jwt.refresh-token.expiration-days:7}")
-        private long refreshTokenExpirationDays;
+    @Value("${application.security.jwt.refresh-token.expiration-days:7}")
+    private long refreshTokenExpirationDays;
 
-        public JwtService() {
-            try {
-                KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-                keyGen.initialize(2048);
-                KeyPair pair = keyGen.generateKeyPair();
-                this.privateKey = pair.getPrivate();
-                this.publicKey = pair.getPublic();
-            } catch (Exception e) {
-                throw new RuntimeException("Error generating RSA keys", e);
+
+    @PostConstruct
+    public void initKeys() {
+        try {
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+
+            byte[] decodedPrivateKey = Base64.getDecoder().decode(cleanKey(privateKeyString));
+            PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(decodedPrivateKey);
+            this.privateKey = keyFactory.generatePrivate(privateKeySpec);
+
+            if (this.privateKey instanceof RSAPrivateCrtKey crtKey) {
+                RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(crtKey.getModulus(), crtKey.getPublicExponent());
+                this.publicKey = keyFactory.generatePublic(publicKeySpec);
+            } else {
+                throw new RuntimeException("Приватный ключ не является экземпляром RSAPrivateCrtKey");
             }
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка инициализации RSA ключей из переменной окружения", e);
         }
+    }
 
-        public Map<String, String> generateTokens(Credential credential) {
-            String accessToken = buildAccessToken(credential);
-            String refreshToken = buildRefreshToken(credential.getUserId());
+    private String cleanKey(String key) {
+        if (key == null) return "";
+        return key.replaceAll("\\n", "")
+                .replaceAll("\\s", "")
+                .replace("-----BEGINPRIVATEKEY-----", "")
+                .replace("-----ENDPRIVATEKEY-----", "");
+    }
 
-            Map<String, String> tokens = new HashMap<>();
-            tokens.put("access_token", accessToken);
-            tokens.put("refresh_token", refreshToken);
-            return tokens;
+
+    public Map<String, String> generateTokens(Credential credential) {
+           String accessToken = buildAccessToken(credential);
+           String refreshToken = buildRefreshToken(credential.getUserId());
+
+           Map<String, String> tokens = new HashMap<>();
+           tokens.put("access_token", accessToken);
+           tokens.put("refresh_token", refreshToken);
+           return tokens;
         }
 
         private String buildAccessToken(Credential credential) {
