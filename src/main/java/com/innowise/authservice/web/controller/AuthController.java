@@ -1,5 +1,6 @@
 package com.innowise.authservice.web.controller;
 
+import com.innowise.authservice.domain.entity.Role;
 import com.innowise.authservice.domain.service.AuthService;
 import com.innowise.authservice.web.dto.RefreshTokenRequest;
 import com.innowise.authservice.web.dto.auth.AuthenticationRequest;
@@ -8,6 +9,7 @@ import com.innowise.authservice.web.dto.auth.RegisterRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -49,5 +51,12 @@ public class AuthController {
     public ResponseEntity<Void> rollbackUser(@PathVariable UUID userId) {
         authService.deleteUserByUserId(userId);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    @PutMapping("/internal/users/{userId}/role")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> updateRole(@PathVariable UUID userId, @RequestParam Role role) {
+        authService.updateUserRole(userId, role);
+        return ResponseEntity.noContent().build();
     }
 }

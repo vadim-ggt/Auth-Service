@@ -9,4 +9,6 @@
     <include file="db/changelog/V1.0/20260203_create_indexes.xml"/>
     <include file="db/changelog/V1.0/20260203_add_fk.xml"/>
 
+    <include file="db/changelog/V1.0/20260305_drop_refresh_tokens.xml"/>
+
 </databaseChangeLog>

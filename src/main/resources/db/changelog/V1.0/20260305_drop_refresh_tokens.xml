@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="20260305-drop-rt" author="vadim-ggt">
+        <comment>Drop refresh_tokens table, fk and indexes</comment>
+
+        <dropForeignKeyConstraint
+                baseTableName="refresh_tokens"
+                constraintName="fk_refresh_tokens_credentials"/>
+
+        <dropTable tableName="refresh_tokens" cascadeConstraints="true"/>
+    </changeSet>
+
+</databaseChangeLog>

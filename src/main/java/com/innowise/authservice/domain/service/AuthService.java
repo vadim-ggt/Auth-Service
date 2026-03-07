@@ -16,7 +16,9 @@ import com.innowise.authservice.web.dto.auth.AuthenticationResponse;
 import com.innowise.authservice.web.dto.auth.RegisterRequest;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,7 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.interfaces.RSAPublicKey;
-import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -40,6 +42,9 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final UserClient userClient;
+
+    @Value("${application.security.jwt.refresh-token.expiration-days:7}")
+    private long refreshTokenExpirationDays;
 
     @Transactional
     public AuthenticationResponse register(RegisterRequest request) {
@@ -92,25 +97,42 @@ public class AuthService {
         return generateAuthResponse(user);
     }
 
-    @Transactional
     public AuthenticationResponse refreshToken(RefreshTokenRequest request) {
         String tokenStr = request.getRefreshToken();
 
         if (!jwtService.isTokenValid(tokenStr)) {
-            throw new TokenRefreshException("Refresh token is invalid");
+            throw new TokenRefreshException("Refresh token is invalid or expired");
         }
 
-        RefreshToken storedToken = refreshTokenRepository.findByToken(tokenStr)
-                .orElseThrow(() -> new TokenRefreshException("Token not found in database"));
+        var storedTokenOpt = refreshTokenRepository.findById(tokenStr);
 
-        if (storedToken.isRevoked() || storedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new TokenRefreshException("Refresh token is revoked or expired");
+        if (storedTokenOpt.isEmpty()) {
+
+            String userIdStr = jwtService.extractSubject(tokenStr);
+            UUID userId = UUID.fromString(userIdStr);
+
+            List<RefreshToken> compromisedTokens = refreshTokenRepository.findByUserId(userId);
+            if (!compromisedTokens.isEmpty()) {
+                refreshTokenRepository.deleteAll(compromisedTokens);
+            }
+
+            throw new TokenRefreshException("SECURITY ALERT: Token reuse detected! All sessions for this user have been revoked. Please login again.");
         }
 
-        storedToken.setRevoked(true);
-        refreshTokenRepository.save(storedToken);
+        RefreshToken storedToken = storedTokenOpt.get();
 
-        return generateAuthResponse(storedToken.getCredential());
+        refreshTokenRepository.delete(storedToken);
+
+        String email = jwtService.extractEmail(tokenStr);
+        Role role = Role.valueOf(jwtService.extractRole(tokenStr));
+
+        Credential userFromOldToken = Credential.builder()
+                .userId(storedToken.getUserId())
+                .email(email)
+                .role(role)
+                .build();
+
+        return generateAuthResponse(userFromOldToken);
     }
 
 
@@ -124,7 +146,7 @@ public class AuthService {
     @Transactional
     public void deleteUserByUserId(UUID userId) {
         Credential user = credentialRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
         credentialRepository.delete(user);
     }
 
@@ -148,12 +170,30 @@ public class AuthService {
     }
 
     private void saveUserRefreshToken(Credential user, String token) {
+
+        long ttlInSeconds = refreshTokenExpirationDays * 24 * 60 * 60L;
+
         RefreshToken refreshToken = RefreshToken.builder()
-                .credential(user)
                 .token(token)
-                .revoked(false)
-                .expiresAt(LocalDateTime.now().plusDays(7))
+                .userId(user.getUserId())
+                .expirationInSeconds(ttlInSeconds)
                 .build();
+
         refreshTokenRepository.save(refreshToken);
     }
+
+    @Transactional
+    public void updateUserRole(UUID targetUserId, Role newRole) {
+        Credential user = credentialRepository.findByUserId(targetUserId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        user.setRole(newRole);
+        credentialRepository.save(user);
+
+        List<RefreshToken> compromisedTokens = refreshTokenRepository.findByUserId(targetUserId);
+        if (!compromisedTokens.isEmpty()) {
+            refreshTokenRepository.deleteAll(compromisedTokens);
+        }
+    }
+
 }

@@ -40,6 +40,8 @@ public class GlobalExceptionHandler {
         );
     }
 
+
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponseDto> handleDataIntegrityViolation(
             DataIntegrityViolationException ex, WebRequest request) {

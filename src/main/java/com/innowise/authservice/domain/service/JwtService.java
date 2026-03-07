@@ -63,7 +63,7 @@ public class JwtService {
 
     public Map<String, String> generateTokens(Credential credential) {
            String accessToken = buildAccessToken(credential);
-           String refreshToken = buildRefreshToken(credential.getUserId());
+           String refreshToken = buildRefreshToken(credential);
 
            Map<String, String> tokens = new HashMap<>();
            tokens.put("access_token", accessToken);
@@ -86,16 +86,18 @@ public class JwtService {
                     .compact();
         }
 
-        private String buildRefreshToken(UUID userId) {
-            Instant now = Instant.now();
-            return Jwts.builder()
-                    .header().keyId(KEY_ID).and()
-                    .subject(userId.toString())
-                    .issuedAt(Date.from(now))
-                    .expiration(Date.from(now.plus(refreshTokenExpirationDays, ChronoUnit.DAYS)))
-                    .signWith(privateKey, Jwts.SIG.RS256)
-                    .compact();
-        }
+    private String buildRefreshToken(Credential credential) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .header().keyId(KEY_ID).and()
+                .subject(credential.getUserId().toString())
+                .claim("scope", credential.getRole().name())
+                .claim("email", credential.getEmail())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(refreshTokenExpirationDays, ChronoUnit.DAYS)))
+                .signWith(privateKey, Jwts.SIG.RS256)
+                .compact();
+    }
 
         public boolean isTokenExpired(String token) {
             try {
@@ -133,4 +135,13 @@ public class JwtService {
                 return false;
             }
         }
+
+    public String extractEmail(String token) {
+        return extractAllClaims(token).get("email", String.class);
+    }
+
+    public String extractRole(String token) {
+        return extractAllClaims(token).get("scope", String.class);
+    }
+
     }
