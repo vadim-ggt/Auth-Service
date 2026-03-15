@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-
     @ExceptionHandler(TokenRefreshException.class)
     public ResponseEntity<ErrorResponseDto> handleTokenRefreshException(
             TokenRefreshException ex, WebRequest request) {
