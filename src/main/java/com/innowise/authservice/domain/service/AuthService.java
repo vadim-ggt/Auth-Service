@@ -41,7 +41,6 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-    private final UserClient userClient;
 
     @Value("${application.security.jwt.refresh-token.expiration-days:7}")
     private long refreshTokenExpirationDays;
@@ -63,21 +62,6 @@ public class AuthService {
                 .build();
 
         Credential savedUser = credentialRepository.save(credential);
-
-        CreateUserProfileDto createUserProfileDto = CreateUserProfileDto.builder()
-                        .userId(newUserId)
-                        .email(request.getEmail())
-                        .name(request.getName())
-                        .surname(request.getSurname())
-                        .birthDate(request.getBirthDate())
-                        .build();
-
-        request.setUserId(newUserId);
-        try {
-            userClient.createUserProfile(createUserProfileDto);
-        } catch (Exception e) {
-            throw new UserServiceCrashedException("Failed to create user profile. Service unavailable.", e);
-        }
 
         return generateAuthResponse(savedUser);
     }
@@ -166,6 +150,7 @@ public class AuthService {
         return AuthenticationResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
+                .userId(user.getUserId())
                 .build();
     }
 
